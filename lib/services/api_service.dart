@@ -5,41 +5,58 @@ import '../models/ticket_model.dart';
 import '../models/customer_model.dart';
 
 class ApiService {
-  // Backend Adresi (Android Emülatör: 10.0.2.2, Gerçek Cihaz: Bilgisayar IP'si)
-  final String baseUrl = "http://10.0.2.2:5000/api";
+  // ===========================================================================
+  // ÖNEMLİ AYAR: IP VE PORT ADRESİ
+  // ===========================================================================
+  // 1. Eğer Android Emülatör kullanıyorsanız şu satırı açın:
+  static const String _ip = "10.0.2.2";
+
+  // 2. Eğer Gerçek Telefon (USB/Wi-Fi) kullanıyorsanız üstteki satırı yorum yapıp
+  // bilgisayarınızın IP'sini (örn: 192.168.1.35) aşağıya yazın:
+  // static const String _ip = "192.168.1.35";
+
+  // Backend'inizin standart portu 5246'dır. Bunu değiştirmeyin.
+  final String baseUrl = "http://$_ip:5158/api";
 
   // ===========================================================================
-  // 1. KİMLİK DOĞRULAMA (AUTH) - EKSİK OLAN KISIM BURASIYDI
+  // 1. KİMLİK DOĞRULAMA (LOGIN)
   // ===========================================================================
   Future<bool> login(String username, String password) async {
     final url = Uri.parse('$baseUrl/Auth/Login');
+    print("Bağlanılıyor: $url"); // Hata ayıklama için log
+
     try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"username": username, "password": password}),
-      );
+      final response = await http
+          .post(
+            url,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"username": username, "password": password}),
+          )
+          .timeout(const Duration(seconds: 15)); // 15 saniye bekleme süresi
+
+      print("Sunucu Cevabı Kodu: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
-        // Gelen Token ve Şube Bilgilerini Telefona Kaydet
         final prefs = await SharedPreferences.getInstance();
+
         await prefs.setString('token', data['token'] ?? "");
         await prefs.setString('username', username);
 
-        // Backend'den BranchId dönüyorsa kaydet (Filtreleme için kritik!)
         if (data['branchId'] != null) {
-          await prefs.setString('branchId', data['branchId']);
+          await prefs.setString('branchId', data['branchId'].toString());
+        }
+        if (data['userId'] != null) {
+          await prefs.setString('userId', data['userId'].toString());
         }
 
         return true;
       } else {
-        print("Login hatası: ${response.body}");
+        print("Giriş Başarısız: ${response.body}");
         return false;
       }
     } catch (e) {
-      print("Bağlantı hatası: $e");
+      print("KRİTİK BAĞLANTI HATASI: $e");
       return false;
     }
   }
@@ -47,8 +64,6 @@ class ApiService {
   // ===========================================================================
   // 2. MÜŞTERİ İŞLEMLERİ
   // ===========================================================================
-
-  // Müşteri Listesi
   Future<List<dynamic>> getCustomers() async {
     final url = Uri.parse('$baseUrl/Customer/GetAll');
     try {
@@ -56,16 +71,13 @@ class ApiService {
         url,
         headers: {"Content-Type": "application/json"},
       );
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      }
+      if (response.statusCode == 200) return jsonDecode(response.body);
     } catch (e) {
-      print("Müşteri listesi hatası: $e");
+      print("Hata: $e");
     }
     return [];
   }
 
-  // Şirket Listesi
   Future<List<String>> getCompanies() async {
     final url = Uri.parse('$baseUrl/Customer/GetCompanies');
     try {
@@ -78,12 +90,11 @@ class ApiService {
         return data.cast<String>();
       }
     } catch (e) {
-      print("Şirket listesi hatası: $e");
+      print("Hata: $e");
     }
     return [];
   }
 
-  // Yeni Müşteri Ekleme
   Future<bool> addCustomer(CustomerDto customer) async {
     final url = Uri.parse('$baseUrl/Customer/Create');
     try {
@@ -92,38 +103,30 @@ class ApiService {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(customer.toJson()),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      print("Müşteri ekleme hatası: $e");
       return false;
     }
   }
 
   // ===========================================================================
-  // 3. SERVİS KAYDI (TICKET) İŞLEMLERİ
+  // 3. SERVİS KAYDI (TICKET)
   // ===========================================================================
-
-  // Form Verileri (Tür, Marka, Teknisyen) - Şube ID Parametreli
   Future<Map<String, dynamic>> getTicketFormData({String? branchId}) async {
     String queryString = branchId != null ? "?branchId=$branchId" : "";
     final url = Uri.parse('$baseUrl/TicketApi/FormData$queryString');
-
     try {
       final response = await http.get(
         url,
         headers: {"Content-Type": "application/json"},
       );
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      }
+      if (response.statusCode == 200) return jsonDecode(response.body);
     } catch (e) {
-      print("Form datası hatası: $e");
+      print("Hata: $e");
     }
     return {};
   }
 
-  // Servis Kaydı Ekleme
   Future<String?> addTicket(ServiceTicketDto ticket) async {
     final url = Uri.parse('$baseUrl/TicketApi/Create');
     try {
@@ -132,17 +135,13 @@ class ApiService {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(ticket.toJson()),
       );
-
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        return responseData['fisNo'] ?? responseData['FisNo'];
-      } else {
-        print("Servis kaydı hatası: ${response.body}");
-        return null;
+        final data = jsonDecode(response.body);
+        return data['fisNo'] ?? data['FisNo'];
       }
     } catch (e) {
-      print("Bağlantı hatası: $e");
-      return null;
+      print("Hata: $e");
     }
+    return null;
   }
 }
