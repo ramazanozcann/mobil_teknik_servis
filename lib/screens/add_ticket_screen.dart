@@ -79,6 +79,7 @@ class _AddTicketScreenState extends State<AddTicketScreen> {
     }
   }
 
+  // --- GÜNCELLENEN FONKSİYON BURASI ---
   void _saveTicket() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -94,7 +95,11 @@ class _AddTicketScreenState extends State<AddTicketScreen> {
 
     setState(() => _isLoading = true);
 
-    // Havuz kontrolü: Eğer HAVUZ seçiliyse null gönder
+    // 1. Telefona kayıtlı BranchId'yi al
+    final prefs = await SharedPreferences.getInstance();
+    String branchId = prefs.getString('branchId') ?? "";
+
+    // 2. Havuz kontrolü: Eğer HAVUZ seçiliyse null gönder
     String? finalTechId;
     if (_selectedTechId == "HAVUZ") {
       finalTechId = null;
@@ -102,7 +107,9 @@ class _AddTicketScreenState extends State<AddTicketScreen> {
       finalTechId = _selectedTechId;
     }
 
+    // 3. Modeli oluştururken branchId'yi veriyoruz
     ServiceTicketDto newTicket = ServiceTicketDto(
+      branchId: branchId, // <-- EKLENEN KISIM
       customerId: _selectedCustomerId!,
       deviceTypeId: _selectedTypeId!,
       deviceBrandId: _selectedBrandId!,

@@ -9,14 +9,13 @@ class ApiService {
   // ÖNEMLİ AYAR: IP VE PORT ADRESİ
   // ===========================================================================
   // 1. Eğer Android Emülatör kullanıyorsanız şu satırı açın:
-  static const String _ip = "10.0.2.2";
 
   // 2. Eğer Gerçek Telefon (USB/Wi-Fi) kullanıyorsanız üstteki satırı yorum yapıp
   // bilgisayarınızın IP'sini (örn: 192.168.1.35) aşağıya yazın:
   // static const String _ip = "192.168.1.35";
 
   // Backend'inizin standart portu 5246'dır. Bunu değiştirmeyin.
-  final String baseUrl = "http://$_ip:5158/api";
+  final String baseUrl = "http://10.0.2.2:5158/api";
 
   // ===========================================================================
   // 1. KİMLİK DOĞRULAMA (LOGIN)
@@ -36,6 +35,8 @@ class ApiService {
 
       print("Sunucu Cevabı Kodu: ${response.statusCode}");
 
+      // Login fonksiyonunun içindeki "if (response.statusCode == 200)" bloğunu güncelleyin:
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final prefs = await SharedPreferences.getInstance();
@@ -43,9 +44,16 @@ class ApiService {
         await prefs.setString('token', data['token'] ?? "");
         await prefs.setString('username', username);
 
+        // --- YENİ EKLENENLER ---
         if (data['branchId'] != null) {
           await prefs.setString('branchId', data['branchId'].toString());
         }
+        // Şube adını kaydet
+        if (data['branchName'] != null) {
+          await prefs.setString('branchName', data['branchName'].toString());
+        }
+        // -----------------------
+
         if (data['userId'] != null) {
           await prefs.setString('userId', data['userId'].toString());
         }
@@ -62,24 +70,38 @@ class ApiService {
   }
 
   // ===========================================================================
-  // 2. MÜŞTERİ İŞLEMLERİ
-  // ===========================================================================
+  // Müşteri Listesi (GÜNCELLENDİ)
   Future<List<dynamic>> getCustomers() async {
-    final url = Uri.parse('$baseUrl/Customer/GetAll');
+    // Önce telefondaki kayıtlı şube ID'yi al
+    final prefs = await SharedPreferences.getInstance();
+    String? branchId = prefs.getString('branchId');
+
+    // URL'ye parametre olarak ekle
+    final url = Uri.parse('$baseUrl/Customer/GetAll?branchId=$branchId');
+
     try {
       final response = await http.get(
         url,
         headers: {"Content-Type": "application/json"},
       );
-      if (response.statusCode == 200) return jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
     } catch (e) {
-      print("Hata: $e");
+      print("Müşteri listesi hatası: $e");
     }
     return [];
   }
 
+  // Şirket Listesi (GÜNCELLENDİ)
   Future<List<String>> getCompanies() async {
-    final url = Uri.parse('$baseUrl/Customer/GetCompanies');
+    // 1. Şube ID'sini telefondan al
+    final prefs = await SharedPreferences.getInstance();
+    String? branchId = prefs.getString('branchId');
+
+    // 2. URL'ye parametre olarak ekle (?branchId=...)
+    final url = Uri.parse('$baseUrl/Customer/GetCompanies?branchId=$branchId');
+
     try {
       final response = await http.get(
         url,
@@ -90,7 +112,7 @@ class ApiService {
         return data.cast<String>();
       }
     } catch (e) {
-      print("Hata: $e");
+      print("Şirket listesi hatası: $e");
     }
     return [];
   }
