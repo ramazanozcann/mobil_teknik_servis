@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'home_screen.dart'; // Ana sayfanızın importu (Dosya adı farklıysa düzeltin)
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -14,7 +14,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   void _login() async {
-    // Alanlar boş mu kontrol et
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -27,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // Servise istek at (ApiService zaten verileri telefona kaydediyor)
+    // Servise istek at
     bool isSuccess = await _apiService.login(
       _usernameController.text,
       _passwordController.text,
@@ -37,21 +36,18 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (isSuccess) {
-      // BAŞARILI: Ana Sayfaya Yönlendir
-      // (userId, branchId vs. ApiService içinde zaten kaydedildi)
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(),
-        ), // HomeScreen adını projenize göre düzeltin
+        MaterialPageRoute(builder: (context) => HomeScreen()),
       );
     } else {
-      // BAŞARISIZ
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text("Hata"),
-          content: Text("Giriş yapılamadı. Kullanıcı adı veya şifre hatalı."),
+          title: Text("Giriş Başarısız"),
+          content: Text(
+            "Sunucuya bağlanılamadı veya şifre hatalı.\n\nLütfen bilgisayarınızda Backend projesinin çalıştığından emin olun.",
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -73,7 +69,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo veya Başlık
               Icon(Icons.build_circle, size: 80, color: Colors.indigo),
               SizedBox(height: 10),
               Text(
@@ -85,8 +80,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               SizedBox(height: 40),
-
-              // Kullanıcı Adı
               TextField(
                 controller: _usernameController,
                 decoration: InputDecoration(
@@ -98,8 +91,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               SizedBox(height: 16),
-
-              // Şifre
               TextField(
                 controller: _passwordController,
                 obscureText: true,
@@ -112,8 +103,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               SizedBox(height: 24),
-
-              // Giriş Butonu
               SizedBox(
                 width: double.infinity,
                 height: 50,
